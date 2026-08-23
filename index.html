@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Amber Calc</title>
+<style>
+  :root{
+    --body-dark:#1c1a1e;
+    --body-darker:#141216;
+    --panel:#242127;
+    --amber:#ff9f1c;
+    --amber-dim:#a5650f;
+    --key-num:#322e35;
+    --key-fn:#3a3540;
+    --key-op:#5b3a2e;
+    --key-eq:#ff9f1c;
+    --text-light:#f3ede3;
+  }
+
+  *{box-sizing:border-box;}
+
+  body{
+    margin:0;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:radial-gradient(circle at 50% 20%, #2b2831 0%, #0f0d11 70%);
+    font-family:'Courier New', monospace;
+    overflow:hidden;
+  }
+
+  .machine{
+    position:relative;
+    width:340px;
+    background:linear-gradient(160deg, var(--body-dark), var(--body-darker));
+    border-radius:28px;
+    padding:24px 20px 28px;
+    box-shadow:
+      0 30px 60px rgba(0,0,0,0.6),
+      inset 0 1px 0 rgba(255,255,255,0.05),
+      inset 0 -2px 0 rgba(0,0,0,0.4);
+    animation: riseIn 0.6s cubic-bezier(.2,.9,.3,1.2);
+  }
+
+  @keyframes riseIn{
+    from{ transform: translateY(40px) scale(.96); opacity:0; }
+    to{ transform: translateY(0) scale(1); opacity:1; }
+  }
+
+  .brand{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:0 4px 14px;
+    color:#7d7680;
+    font-size:11px;
+    letter-spacing:3px;
+    text-transform:uppercase;
+  }
+
+  .brand .dot{
+    width:8px;height:8px;border-radius:50%;
+    background:var(--amber);
+    box-shadow:0 0 8px 2px rgba(255,159,28,0.8);
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+
+  @keyframes pulse{
+    0%,100%{ opacity:1; }
+    50%{ opacity:0.35; }
+  }
+
+  .screen{
+    position:relative;
+    background:linear-gradient(180deg, #100e12, #1a171c);
+    border-radius:14px;
+    padding:22px 18px 16px;
+    margin-bottom:18px;
+    box-shadow: inset 0 3px 10px rgba(0,0,0,0.7), inset 0 0 0 1px rgba(255,159,28,0.08);
+    overflow:hidden;
+  }
+
+  .screen::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    background:repeating-linear-gradient(
+      0deg,
+      rgba(255,255,255,0.015) 0px,
+      rgba(255,255,255,0.015) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    pointer-events:none;
+  }
+
+  .history{
+    min-height:16px;
+    text-align:right;
+    color:var(--amber-dim);
+    font-size:13px;
+    letter-spacing:1px;
+    margin-bottom:6px;
+    opacity:0.8;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  .display{
+    text-align:right;
+    font-size:42px;
+    color:var(--amber);
+    text-shadow:0 0 12px rgba(255,159,28,0.65), 0 0 2px rgba(255,159,28,0.9);
+    letter-spacing:1px;
+    white-space:nowrap;
+    overflow:hidden;
+    min-height:50px;
+    transition: text-shadow 0.15s ease;
+  }
+
+  .display.flicker{
+    animation: flicker 0.18s ease;
+  }
+
+  @keyframes flicker{
+    0%{ opacity:0.4; text-shadow:none; }
+    100%{ opacity:1; text-shadow:0 0 12px rgba(255,159,28,0.65); }
+  }
+
+  .keys{
+    display:grid;
+    grid-template-columns:repeat(4, 1fr);
+    gap:10px;
+  }
+
+  button{
+    position:relative;
+    border:none;
+    outline:none;
+    border-radius:12px;
+    height:58px;
+    font-size:19px;
+    font-family:inherit;
+    color:var(--text-light);
+    background:var(--key-num);
+    box-shadow:
+      0 4px 0 rgba(0,0,0,0.45),
+      inset 0 1px 0 rgba(255,255,255,0.08);
+    cursor:pointer;
+    transition: transform 0.06s ease, box-shadow 0.06s ease, background 0.15s ease;
+    overflow:hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button:active{
+    transform: translateY(4px);
+    box-shadow:
+      0 0 0 rgba(0,0,0,0.45),
+      inset 0 1px 0 rgba(255,255,255,0.05);
+  }
+
+  button.fn{ background:var(--key-fn); color:#d9c9e0; }
+  button.op{ background:var(--key-op); color:#ffd7b0; font-size:22px; }
+  button.zero{ grid-column: span 2; }
+
+  button.eq{
+    background:linear-gradient(180deg, #ffb545, var(--key-eq));
+    color:#241505;
+    font-weight:bold;
+    box-shadow:
+      0 4px 0 var(--amber-dim),
+      inset 0 1px 0 rgba(255,255,255,0.3);
+  }
+  button.eq:active{
+    box-shadow: 0 0 0 var(--amber-dim);
+  }
+
+  .ripple{
+    position:absolute;
+    border-radius:50%;
+    background:rgba(255,255,255,0.35);
+    transform:scale(0);
+    animation: ripple-anim 0.5s ease-out forwards;
+    pointer-events:none;
+  }
+
+  @keyframes ripple-anim{
+    to{
+      transform:scale(3.2);
+      opacity:0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation:none !important; transition:none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="machine">
+  <div class="brand"><span>Amber · Calc</span><span class="dot"></span></div>
+
+  <div class="screen">
+    <div class="history" id="history">&nbsp;</div>
+    <div class="display" id="display">0</div>
+  </div>
+
+  <div class="keys">
+    <button class="fn" data-action="clear">AC</button>
+    <button class="fn" data-action="negate">+/-</button>
+    <button class="fn" data-action="percent">%</button>
+    <button class="op" data-action="divide">÷</button>
+
+    <button data-num="7">7</button>
+    <button data-num="8">8</button>
+    <button data-num="9">9</button>
+    <button class="op" data-action="multiply">×</button>
+
+    <button data-num="4">4</button>
+    <button data-num="5">5</button>
+    <button data-num="6">6</button>
+    <button class="op" data-action="subtract">−</button>
+
+    <button data-num="1">1</button>
+    <button data-num="2">2</button>
+    <button data-num="3">3</button>
+    <button class="op" data-action="add">+</button>
+
+    <button class="zero" data-num="0">0</button>
+    <button data-num=".">.</button>
+    <button class="eq" data-action="equals">=</button>
+  </div>
+</div>
+
+<script>
+  const displayEl = document.getElementById('display');
+  const historyEl = document.getElementById('history');
+
+  let current = "0";
+  let previous = null;
+  let operator = null;
+  let justEvaluated = false;
+
+  function updateDisplay(){
+    displayEl.textContent = current;
+    displayEl.classList.remove('flicker');
+    void displayEl.offsetWidth;
+    displayEl.classList.add('flicker');
+  }
+
+  function updateHistory(text){
+    historyEl.textContent = text || '\u00A0';
+  }
+
+  function symbolFor(op){
+    return { add:'+', subtract:'−', multiply:'×', divide:'÷' }[op] || '';
+  }
+
+  function inputDigit(d){
+    if(justEvaluated){
+      current = "0";
+      justEvaluated = false;
+      updateHistory("");
+    }
+    if(d === "." ){
+      if(current.includes(".")) return;
+      current = current + ".";
+    } else {
+      current = (current === "0") ? d : current + d;
+    }
+    updateDisplay();
+  }
+
+  function compute(a,b,op){
+    a = parseFloat(a); b = parseFloat(b);
+    switch(op){
+      case 'add': return a+b;
+      case 'subtract': return a-b;
+      case 'multiply': return a*b;
+      case 'divide': return b === 0 ? NaN : a/b;
+      default: return b;
+    }
+  }
+
+  function formatResult(n){
+    if(Number.isNaN(n)) return "Error";
+    let s = String(Math.round(n * 1e10) / 1e10);
+    if(s.length > 14) s = n.toExponential(6);
+    return s;
+  }
+
+  function handleOperator(op){
+    if(operator && previous !== null && !justEvaluated){
+      const result = compute(previous, current, operator);
+      current = formatResult(result);
+      previous = current;
+    } else {
+      previous = current;
+    }
+    operator = op;
+    justEvaluated = false;
+    updateHistory(previous + " " + symbolFor(op));
+    current = "0";
+    updateDisplay();
+  }
+
+  function handleEquals(){
+    if(operator === null || previous === null) return;
+    updateHistory(previous + " " + symbolFor(operator) + " " + current + " =");
+    const result = compute(previous, current, operator);
+    current = formatResult(result);
+    previous = null;
+    operator = null;
+    justEvaluated = true;
+    updateDisplay();
+  }
+
+  function handleClear(){
+    current = "0";
+    previous = null;
+    operator = null;
+    justEvaluated = false;
+    updateHistory("");
+    updateDisplay();
+  }
+
+  function handleNegate(){
+    if(current === "0") return;
+    current = current.startsWith("-") ? current.slice(1) : "-" + current;
+    updateDisplay();
+  }
+
+  function handlePercent(){
+    current = formatResult(parseFloat(current) / 100);
+    updateDisplay();
+  }
+
+  function spawnRipple(btn, evt){
+    const rect = btn.getBoundingClientRect();
+    const ripple = document.createElement('span');
+    ripple.className = 'ripple';
+    const size = Math.max(rect.width, rect.height);
+    ripple.style.width = ripple.style.height = size + 'px';
+    const x = (evt.touches ? evt.touches[0].clientX : evt.clientX) - rect.left - size/2;
+    const y = (evt.touches ? evt.touches[0].clientY : evt.clientY) - rect.top - size/2;
+    ripple.style.left = x + 'px';
+    ripple.style.top = y + 'px';
+    btn.appendChild(ripple);
+    setTimeout(() => ripple.remove(), 500);
+  }
+
+  document.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      spawnRipple(btn, e);
+      if(btn.dataset.num !== undefined){
+        inputDigit(btn.dataset.num);
+      } else {
+        const action = btn.dataset.action;
+        if(['add','subtract','multiply','divide'].includes(action)) handleOperator(action);
+        else if(action === 'equals') handleEquals();
+        else if(action === 'clear') handleClear();
+        else if(action === 'negate') handleNegate();
+        else if(action === 'percent') handlePercent();
+      }
+    });
+  });
+
+  window.addEventListener('keydown', (e) => {
+    if(e.key >= '0' && e.key <= '9') inputDigit(e.key);
+    else if(e.key === '.') inputDigit('.');
+    else if(e.key === '+') handleOperator('add');
+    else if(e.key === '-') handleOperator('subtract');
+    else if(e.key === '*') handleOperator('multiply');
+    else if(e.key === '/') { e.preventDefault(); handleOperator('divide'); }
+    else if(e.key === 'Enter' || e.key === '=') handleEquals();
+    else if(e.key === 'Escape') handleClear();
+  });
+
+  updateDisplay();
+</script>
+
+</body>
+</html>
+<a
+href="https://www.Amber Calc.com">visit Example</a>
+
+
+
